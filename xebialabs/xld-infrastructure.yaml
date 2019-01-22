@@ -1,0 +1,132 @@
+apiVersion: xl-deploy/v1
+kind: Applications
+spec:
+- name: jkmonolith-2
+  type: core.Directory
+  children:
+    - name: jkmonolith-2-ecs-fargate-cluster
+      type: udm.Application
+      children:
+      - name: '1.0'
+        type: udm.DeploymentPackage
+        deployables:
+# ECS cluster (no instances, FARGATE only)
+        - name: jkmonolith-2-ecs-cluster
+          type: aws.ecs.ClusterSpec
+          clusterName: 'jkmonolith-2-ecs-cluster'
+          region: '{{region}}'
+
+# Networking
+        - name: jkmonolith-2-ecs-vpc
+          type: aws.vpc.VPCSpec
+          vpcName: 'jkmonolith-2-ecs-vpc'
+          region: '{{region}}'
+          cidrBlock: 10.0.0.0/16
+          createInternetGateway: true
+          internetGatewayName: 'jkmonolith-2-ecs-igw'
+        - name: jkmonolith-2-ecs-subnet-ipv4-az-1a
+          type: aws.vpc.SubnetSpec
+          subnetName: 'jkmonolith-2-ecs-subnet-ipv4-az-1a'
+          region: '{{region}}'
+          availabilityZone: '{{region}}a'
+          vpc: 'Name:jkmonolith-2-ecs-vpc'
+          cidrBlock: 10.0.0.0/24
+        - name: jkmonolith-2-ecs-subnet-ipv4-az-1b
+          type: aws.vpc.SubnetSpec
+          subnetName: 'jkmonolith-2-ecs-subnet-ipv4-az-1b'
+          region: '{{region}}'
+          availabilityZone: '{{region}}b'
+          vpc: 'Name:jkmonolith-2-ecs-vpc'
+          cidrBlock: 10.0.1.0/24
+        - name: jkmonolith-2-ecs-route-table
+          type: aws.vpc.RouteTableSpec
+          routeTableName: 'jkmonolith-2-ecs-route-table'
+          region: '{{region}}'
+          vpc: 'Name:jkmonolith-2-ecs-vpc'
+          is_main: true
+          subnets:
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1a'
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1b'
+          routes:
+          - name: route1
+            type: aws.vpc.RouteSpec
+            ipv4Address: 0.0.0.0/0
+            gatewayId: 'Name:jkmonolith-2-ecs-igw'
+# Security
+        - name: jkmonolith-2-ecs-security-group
+          type: aws.vpc.SecurityGroupSpec
+          securityGroupName: 'jkmonolith-2-ecs-security-group'
+          description: Created by XL Deploy
+          region: '{{region}}'
+          vpc: 'Name:jkmonolith-2-ecs-vpc'
+          inboundRules:
+          - name: inbound
+            type: aws.vpc.SecurityGroupInboundRuleSpec
+            protocol: -1
+            portRange: 22
+            source: 0.0.0.0/0
+
+# Load balancer
+        - name: jkmonolith-2-targetgroup
+          type: aws.elb.TargetGroupSpec
+          targetName: jkmonolith-2-targetgroup
+          targetType: ip
+          region: '{{region}}'
+          vpc: 'Name:jkmonolith-2-ecs-vpc'
+          protocol: http
+          port: 80
+          healthCheckInterval: 30
+        - name: jkmonolith-2-ecs-alb
+          type: aws.elb.ApplicationELBSpec
+          loadBalancerName: jkmonolith-2-ecs-alb
+          region: '{{region}}'
+          scheme: internet-facing
+          listeners:
+          - name: jkmonolith-2-ecs-alb-listener
+            type: aws.elb.ApplicationListenerSpec
+            protocol: http
+            port: 80
+            targetGroup: jkmonolith-2-targetgroup
+          subnets:
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1a'
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1b'
+          securityGroups:
+          - 'Name:jkmonolith-2-ecs-security-group'
+          boundTemplates:
+          - "../jkmonolith-2-ecs-alb-dictionary"
+# RDS Database
+        - name: jkmonolith-2-ecs-db-subnet-group
+          description: DB subnet group
+          type: aws.rds.DBSubnetGroupSpec
+          subnetGroupName: 'jkmonolith-2-ecs-db-subnet-group'
+          region: '{{region}}'
+          subnets:
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1a'
+          - 'Name:jkmonolith-2-ecs-subnet-ipv4-az-1b'
+        - name: jkmonolith-2-mysql-db
+          type: aws.rds.DBInstanceSpec
+          region: '{{region}}'
+          engine: mysql
+          multiAZ: true
+          licenseModel: general-public-license
+          allocatedStorage: 20
+          dbInstanceClass: db.t2.small
+          dbInstanceIdentifier: store-mysql-db
+          dbSubnetGroupName: 'jkmonolith-2-ecs-db-subnet-group'
+          vpcSecurityGroupIds:
+          - 'Name:jkmonolith-2-ecs-security-group'
+          dbName: store
+          masterUsername: store
+          masterUserPassword: !value MySQLMasterPassword 
+          boundTemplates:
+          - "../jkmonolith-2-ecs-dictionary"
+        templates:
+        - name: jkmonolith-2-ecs-dictionary
+          type: template.udm.Dictionary
+          entries:
+            MYSQL_DB_ADDRESS: '{{%address%}}'
+            MYSQL_DB_PORT: '{{%finalPort%}}'
+        - name: jkmonolith-2-ecs-alb-dictionary
+          type: template.udm.Dictionary
+          entries:
+            ALB_DNS_NAME: '{{%dnsName%}}'

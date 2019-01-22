@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification
+  name: invoice
   namespace: xl-demo
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: notification
+      app: invoice
       version: "1.0"
   template:
     metadata:
       labels:
-        app: notification
+        app: invoice
         version: "1.0"
     spec:
       initContainers:
@@ -24,7 +24,7 @@ spec:
             - |
                 while true
                 do
-                  rt=$(nc -z -w 1 notification-mongodb 27017)
+                  rt=$(nc -z -w 1 invoice-mysql 3306)
                   if [ $? -eq 0 ]; then
                     echo "DB is UP"
                     break
@@ -33,8 +33,8 @@ spec:
                   sleep 10
                 done
       containers:
-      - name: notification-app
-        image: xebialabsunsupported/ecommerce-notification
+      - name: invoice-app
+        image: jkriegerxl/ecommerce-invoice:@IMAGE_TAG@
         imagePullPolicy: Always
         env:
         - name: SPRING_PROFILES_ACTIVE
@@ -48,10 +48,8 @@ spec:
               key: registry-admin-password
         - name: EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE
           value: http://admin:${jhipster.registry.password}@jhipster-registry.xl-demo.svc.cluster.local:8761/eureka/
-        - name: SPRING_DATA_MONGODB_DATABASE
-          value: notification
-        - name: SPRING_DATA_MONGODB_URI
-          value: "mongodb://notification-mongodb.xl-demo.svc.cluster.local:27017"
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://invoice-mysql.xl-demo.svc.cluster.local:3306/invoice?useUnicode=true&characterEncoding=utf8&useSSL=false
         - name: JHIPSTER_METRICS_LOGS_ENABLED
           value: 'true'
         - name: JHIPSTER_LOGGING_LOGSTASH_ENABLED
@@ -75,7 +73,7 @@ spec:
             cpu: "1"
         ports:
         - name: http
-          containerPort: 8082
+          containerPort: 8081
         readinessProbe:
           httpGet:
             path: /management/health
