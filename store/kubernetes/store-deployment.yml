@@ -34,11 +34,7 @@ spec:
                 done
       containers:
       - name: store-app
-<<<<<<< HEAD:kubernetes/store/store-deployment.yml
         image: jkriegerxl/ecommerce-store:@IMAGE_TAG@
-=======
-        image: <your-dockerhub-user>/ecommerce-store:@IMAGE_TAG@
->>>>>>> c1154ff1c060255859a25d5babcb13f033b1065c:store/kubernetes/store-deployment.yml
         imagePullPolicy: Always
         env:
         - name: SPRING_PROFILES_ACTIVE
