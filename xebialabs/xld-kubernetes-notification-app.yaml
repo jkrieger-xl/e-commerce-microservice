@@ -1,0 +1,30 @@
+apiVersion: xl-deploy/v1
+kind: Applications
+spec:
+- name: juliano-micro-1
+  type: core.Directory
+  children:
+    - name: K8S
+      type: core.Directory
+      children:
+      - name: juliano-micro-1-notification-mongodb
+        type: udm.Application
+        children:
+        - name: !value BUILD_ID
+          type: udm.DeploymentPackage
+          deployables:
+          - name: juliano-micro-1-notification-mongodb
+            type: k8s.ResourcesFile
+            file: !file ../notification/build/kubernetes/notification-mongodb.yml
+      - name: juliano-micro-1-notification
+        type: udm.Application
+        children:
+        - name: !value BUILD_ID
+          type: udm.DeploymentPackage
+          deployables:
+          - name: juliano-micro-1-invoice-notification
+            type: k8s.ResourcesFile
+            file: !file ../notification/build/kubernetes/notification-deployment.yml
+          - name: juliano-micro-1-notification-svc
+            type: k8s.ResourcesFile
+            file: !file ../notification/build/kubernetes/notification-service.yml

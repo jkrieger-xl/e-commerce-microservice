@@ -1,0 +1,42 @@
+apiVersion: xl-deploy/v1
+kind: Applications
+spec:
+- name: juliano-micro-1
+  type: core.Directory
+  children:
+    - name: K8S
+      type: core.Directory
+      children:
+      - name: juliano-micro-1-store-mysql
+        type: udm.Application
+        children:
+        - name: !value BUILD_ID
+          type: udm.DeploymentPackage
+          deployables:
+          - name: juliano-micro-1-store-mysql
+            type: k8s.ResourcesFile
+            file: !file ../store/build/kubernetes/store-mysql.yml
+      - name: juliano-micro-1-registry
+        type: udm.Application
+        children:
+        - name: !value BUILD_ID
+          type: udm.DeploymentPackage
+          deployables:
+          - name: juliano-micro-1-application-config
+            type: k8s.ResourcesFile
+            file: !file ../registry/kubernetes/application-configmap.yml
+          - name: juliano-micro-1-jhipster-registry
+            type: k8s.ResourcesFile
+            file: !file ../registry/kubernetes/jhipster-registry.yml
+      - name: juliano-micro-1-store
+        type: udm.Application
+        children:
+        - name: !value BUILD_ID
+          type: udm.DeploymentPackage
+          deployables:
+          - name: juliano-micro-1-store-deployment
+            type: k8s.ResourcesFile
+            file: !file ../store/build/kubernetes/store-deployment.yml
+          - name: juliano-micro-1-store-svc
+            type: k8s.ResourcesFile
+            file: !file ../store/build/kubernetes/store-service.yml

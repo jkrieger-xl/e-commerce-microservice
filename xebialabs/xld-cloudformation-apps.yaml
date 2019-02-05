@@ -1,113 +1,156 @@
 apiVersion: xl-deploy/v1
 kind: Applications
 spec:
-- name: jkrieger-e-commerce
+- name: juliano-micro-1
   type: core.Directory
   children:
 
   - name: EKS-LAMBDA
     type: core.Directory
     children:
-    ### create S3 bucket ###
-    - name: jkrieger-e-commerce-lambda-bucket
+    # create S3 bucket
+    - name: juliano-micro-1-lambda-bucket
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: s3-bucket-jkrieger-e-commerce-lambda
+        - name: s3-bucket-juliano-micro-1-lambda
           type: aws.s3.BucketSpec
-          bucketName: jkrieger-e-commerce-lambda
+          bucketName: juliano-micro-1-lambda
           region: eu-west-1
-    ### upload the artifacts to S3 bucket ###
-    - name: jkrieger-e-commerce-lambda-artifacts
+    # upload the artifacts to S3 bucket
+    - name: juliano-micro-1-lambda-artifacts
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-lambda-artifacts
+        - name: juliano-micro-1-lambda-artifacts
           type: aws.s3.File
           file: !file ../cloudformation/cfn-secret-provider.zip
           acl: bucket-owner-full-control
           scanPlaceholders: false
-# Provision EKS cluster using Cloudformation templates
+  # Provision EKS cluster using Cloudformation templates
   - name: EKS-CLOUDFORMATION
     type: core.Directory
     children:
-    - name: jkrieger-e-commerce-cloudformation-eks-user
+    - name: juliano-micro-1-cloudformation-eks-user
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-eks-user
+        - name: juliano-micro-1-eks-user
           type: aws.cloudformation.Template
           file: !file ../cloudformation/eks-user.yaml
           capabilities:
           - CAPABILITY_IAM
           - CAPABILITY_NAMED_IAM
           inputVariables:
-            ProjectName: jkrieger-e-commerce
-            UserStackName: jkrieger-e-commerce-eks-user
-            S3BucketPrefix: jkrieger-e-commerce-lambda
-    - name: jkrieger-e-commerce-cloudformation-eks-vpc
+            ProjectName: juliano-micro-1
+            UserStackName: juliano-micro-1-eks-user
+            S3BucketPrefix: juliano-micro-1-lambda
+    - name: juliano-micro-1-cloudformation-eks-vpc
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-eks-vpc
+        - name: juliano-micro-1-eks-vpc
           type: aws.cloudformation.Template
           file: !file ../cloudformation/eks-vpc.yaml
           capabilities:
           - CAPABILITY_IAM
           - CAPABILITY_NAMED_IAM
           inputVariables:
-            ProjectName: jkrieger-e-commerce
-            VPCStackName: jkrieger-e-commerce-eks-vpc
+            ProjectName: juliano-micro-1
+            VPCStackName: juliano-micro-1-eks-vpc
             AvailabilityZones: eu-west-1a, eu-west-1b
-    - name: jkrieger-e-commerce-cloudformation-eks-master
+    - name: juliano-micro-1-cloudformation-eks-master
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-eks-master
+        - name: juliano-micro-1-eks-master
           type: aws.cloudformation.Template
           file: !file ../cloudformation/eks-master.yaml
           capabilities:
           - CAPABILITY_IAM
           - CAPABILITY_NAMED_IAM
           inputVariables:
-            ProjectName: jkrieger-e-commerce
-            VPCStackName: jkrieger-e-commerce-eks-vpc
-    - name: jkrieger-e-commerce-cloudformation-eks-workers
+            ProjectName: juliano-micro-1
+            VPCStackName: juliano-micro-1-eks-vpc
+    - name: juliano-micro-1-cloudformation-eks-workers
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-eks-workers
+        - name: juliano-micro-1-eks-workers
           type: aws.cloudformation.Template
           file: !file ../cloudformation/eks-workers.yaml
           capabilities:
           - CAPABILITY_IAM
           - CAPABILITY_NAMED_IAM
           inputVariables:
-            ProjectName: jkrieger-e-commerce
-            VPCStackName: jkrieger-e-commerce-eks-vpc
-            UserStackName: jkrieger-e-commerce-eks-user
-            ClusterStackName: jkrieger-e-commerce-eks-master
-            ClusterName: jkrieger-e-commerce-master
-            NodeGroupName: jkrieger-e-commerce
-    - name: jkrieger-e-commerce-k8s-configmap
+            ProjectName: juliano-micro-1
+            VPCStackName: juliano-micro-1-eks-vpc
+            UserStackName: juliano-micro-1-eks-user
+            ClusterStackName: juliano-micro-1-eks-master
+            ClusterName: juliano-micro-1-master
+            NodeGroupName: juliano-micro-1
+          boundTemplates:
+            - "../eks-cluster"
+            - "../aws-eks-juliano-micro-1"
+            - "../aws-eks-juliano-micro-1-kube-system"
+            - "../aws-eks-juliano-micro-1-dictionary"
+        # create infrastructure entry in XLD using the cluster info that was created
+        templates:
+        - name: eks-cluster
+          type: "template.k8s.Master"
+          apiServerURL: '{{%outputVariables.ClusterEndpoint%}}'
+          skipTLS: "true"
+          isEKS: "true"
+          clusterName: "juliano-micro-1-master"
+          accessKey: !value AWSAccessKey
+          accessSecret: !value AWSAccessSecret
+          instanceName: "juliano-micro-1/eks-cluster"
+          childTemplates:
+          # this namespace is needed for authentication to the cluster
+          - name: kube-system
+            type: "template.k8s.Namespace"
+            namespaceName: "kube-system"
+        # this dictionary is needed for aws-eks-juliano-micro-1-kube-system environment
+        - name: aws-eks-juliano-micro-1-dictionary
+          type: "template.udm.Dictionary"
+          instanceName: "juliano-micro-1/aws-eks-juliano-micro-1-dictionary"
+          entries:
+            NodeInstanceRole: '{{%outputVariables.NodeInstanceRole%}}'
+            EksUser: '{{%outputVariables.EksUser%}}'
+            EksUserArn: '{{%outputVariables.EksUserArn%}}'
+        # create environment entry in XLD for the newly created clusters
+        - name: aws-eks-juliano-micro-1
+          type: "template.udm.Environment"
+          instanceName: "juliano-micro-1/aws-eks-juliano-micro-1"
+          members:
+            - "../eks-cluster"
+        - name: aws-eks-juliano-micro-1-kube-system
+          type: "template.udm.Environment"
+          instanceName: "juliano-micro-1/aws-eks-juliano-micro-1-kube-system"
+          members:
+            - "../eks-cluster/kube-system"
+          dictionaries:
+            - "../aws-eks-juliano-micro-1-dictionary"
+    # config map used to create custom user for authentication to the EKS cluster
+    - name: juliano-micro-1-k8s-configmap
       type: udm.Application
       children:
       - name: '1.0.0'
         type: udm.DeploymentPackage
         deployables:
-        - name: jkrieger-e-commerce-aws-auth
+        - name: juliano-micro-1-aws-auth
           type: k8s.ResourcesFile
           file: !file ../kubernetes/aws-auth-cm.yaml
           delimiters: "## ##"
@@ -115,9 +158,9 @@ spec:
   - name: K8S
     type: core.Directory
 
-# Provision K8s namespace
     children:
-    - name: jkrieger-e-commerce-namespace
+    # Provision K8s namespace
+    - name: juliano-micro-1-namespace
       type: udm.Application
       children:
       - name: '1.0.0'

@@ -2,10 +2,10 @@
 apiVersion: xl-deploy/v1
 kind: Infrastructure
 spec:
-- name: jkrieger-e-commerce
+- name: juliano-micro-1
   type: core.Directory
   children:
-  - name: aws-jkrieger-e-commerce
+  - name: aws-juliano-micro-1
     type: aws.Cloud
     accesskey: !value AWSAccessKey
     accessSecret: !value AWSAccessSecret
@@ -17,11 +17,11 @@ spec:
 apiVersion: xl-deploy/v1
 kind: Environments
 spec:
-- name: jkrieger-e-commerce
+- name: juliano-micro-1
   type: core.Directory
   children:
-  - name: aws-cloudformation-jkrieger-e-commerce
+  - name: aws-cloudformation-juliano-micro-1
     type: udm.Environment
     members:
-    - Infrastructure/jkrieger-e-commerce/aws-jkrieger-e-commerce
-    - Infrastructure/jkrieger-e-commerce/aws-jkrieger-e-commerce/eks-cloudformation
+    - Infrastructure/juliano-micro-1/aws-juliano-micro-1
+    - Infrastructure/juliano-micro-1/aws-juliano-micro-1/eks-cloudformation
